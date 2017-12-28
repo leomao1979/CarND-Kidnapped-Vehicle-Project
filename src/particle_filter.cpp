@@ -18,15 +18,15 @@
 #include "particle_filter.h"
 
 using namespace std;
+static default_random_engine gen;
 
 void ParticleFilter::init(double x, double y, double theta, double std[]) {
-	// TODO: Set the number of particles. Initialize all particles to first position (based on estimates of 
+	// Set the number of particles. Initialize all particles to first position (based on estimates of
 	//   x, y, theta and their uncertainties from GPS) and all weights to 1. 
 	// Add random Gaussian noise to each particle.
 	// NOTE: Consult particle_filter.h for more information about this method (and others in this file).
     
     num_particles = 100;
-    default_random_engine gen;
     
     // This line creates a normal (Gaussian) distribution for x.
     normal_distribution<double> dist_x(x, std[0]);
@@ -52,13 +52,12 @@ void ParticleFilter::prediction(double delta_t, double std_pos[], double velocit
 	//  http://en.cppreference.com/w/cpp/numeric/random/normal_distribution
 	//  http://www.cplusplus.com/reference/random/default_random_engine/
     
-    default_random_engine gen;
     for (int i=0; i < particles.size(); i++) {
         Particle& p = particles[i];
         
         // Predict (x, y, theta) with delta_t, velocity and yaw_rate
         double x_f, y_f, theta_f;
-        if (yaw_rate != 0) {
+        if (fabs(yaw_rate) > 0) {
             double yaw_angel = yaw_rate * delta_t;
             x_f = p.x + (velocity / yaw_rate) * (sin(p.theta + yaw_angel) - sin(p.theta));
             y_f = p.y + (velocity / yaw_rate) * (cos(p.theta) - cos(p.theta + yaw_angel));
@@ -121,8 +120,9 @@ void ParticleFilter::updateWeights(double sensor_range, double std_landmark[],
                 }
             }
             if (sqrt(min_distance) > sensor_range) {
-                cout << "Ignore observation. min distance: " << sqrt(min_distance) << endl;
-                continue;
+                cout << "Can't associate observation with landmark within sensor range. Kill particle. min distance: " << sqrt(min_distance) << endl;
+                new_weight = 0.0;
+                break;
             }
             // Calculate weight
             double gauss_norm= (1 / (2 * M_PI * std_landmark[0] * std_landmark[1]));
@@ -140,7 +140,7 @@ void ParticleFilter::resample() {
 	// Resample particles with replacement with probability proportional to their weight.
 	// NOTE: You may find std::discrete_distribution helpful here.
 	//       http://en.cppreference.com/w/cpp/numeric/random/discrete_distribution
-    default_random_engine gen;
+
     discrete_distribution<double> d(weights.begin(), weights.end());
     vector<Particle> resampled_particles;
     for (int i=0; i<particles.size(); i++) {
